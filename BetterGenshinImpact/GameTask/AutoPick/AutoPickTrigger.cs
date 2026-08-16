@@ -175,6 +175,14 @@ public partial class AutoPickTrigger : ITaskTrigger
     /// </summary>
     private int _prevClickFrameIndex = -1;
 
+    private const int OcrFingerprintWidth = 64;
+    private const int OcrFingerprintHeight = 16;
+    private static readonly TimeSpan OcrCacheDuration = TimeSpan.FromMilliseconds(350);
+    private byte[]? _lastOcrFingerprint;
+    private Size _lastOcrSourceSize;
+    private string _lastOcrResult = string.Empty;
+    private long _lastOcrTimestamp;
+
     //private int _fastModePickCount = 0;
 
     public void OnCapture(CaptureContent content)
@@ -300,7 +308,7 @@ public partial class AutoPickTrigger : ITaskTrigger
         if (config.OcrEngine == nameof(PickOcrEngineEnum.Yap))
         {
             using var textMat = new Mat(content.CaptureRectArea.CacheGreyMat, textRect);
-            text = TextInferenceFactory.Pick.Value.Inference(textMat);
+            text = RecognizeWithCache(textMat, () => TextInferenceFactory.Pick.Value.Inference(textMat));
         }
         else
         {
@@ -314,7 +322,7 @@ public partial class AutoPickTrigger : ITaskTrigger
                 using var textOnlyMat = new Mat(textMat, new Rect(0, 0,
                     boundingRect.Right + 5 < textMat.Width ? boundingRect.Right + 5 : textMat.Width, textMat.Height));
                 using var ocrMat = UiTextOcrPreprocessor.CreateWhiteTextImage(textOnlyMat);
-                text = OcrFactory.Paddle.OcrWithoutDetector(ocrMat);
+                text = RecognizeWithCache(ocrMat, () => OcrFactory.Paddle.OcrWithoutDetector(ocrMat));
 
                 // if (RuntimeHelper.IsDebug)
                 // {
@@ -336,7 +344,7 @@ public partial class AutoPickTrigger : ITaskTrigger
             {
                 Debug.WriteLine("-- 无法识别到有效文字区域，尝试直接OCR DET");
                 using var ocrMat = UiTextOcrPreprocessor.CreateWhiteTextImage(textMat);
-                text = OcrFactory.Paddle.Ocr(ocrMat);
+                text = RecognizeWithCache(ocrMat, () => OcrFactory.Paddle.Ocr(ocrMat));
             }
         }
 
@@ -403,6 +411,68 @@ public partial class AutoPickTrigger : ITaskTrigger
         }
 
         speedTimer.DebugPrint();
+    }
+
+    private string RecognizeWithCache(Mat textMat, Func<string> recognize)
+    {
+        var fingerprint = CreateOcrFingerprint(textMat);
+        var timestamp = Stopwatch.GetTimestamp();
+        if (_lastOcrFingerprint is not null
+            && textMat.Size() == _lastOcrSourceSize
+            && Stopwatch.GetElapsedTime(_lastOcrTimestamp, timestamp) <= OcrCacheDuration
+            && GetMeanAbsoluteDifference(fingerprint, _lastOcrFingerprint) <= 4)
+        {
+            return _lastOcrResult;
+        }
+
+        var result = recognize();
+        _lastOcrFingerprint = fingerprint;
+        _lastOcrSourceSize = textMat.Size();
+        _lastOcrResult = result;
+        _lastOcrTimestamp = Stopwatch.GetTimestamp();
+        return result;
+    }
+
+    private static byte[] CreateOcrFingerprint(Mat textMat)
+    {
+        Mat? gray = null;
+        try
+        {
+            gray = textMat.Channels() switch
+            {
+                1 => textMat,
+                3 => textMat.CvtColor(ColorConversionCodes.BGR2GRAY),
+                4 => textMat.CvtColor(ColorConversionCodes.BGRA2GRAY),
+                var channels => throw new ArgumentException($"Unsupported OCR source channel count: {channels}.", nameof(textMat))
+            };
+            using var resized = gray.Resize(new Size(OcrFingerprintWidth, OcrFingerprintHeight),
+                interpolation: InterpolationFlags.Area);
+            resized.GetArray(out byte[] fingerprint);
+            return fingerprint;
+        }
+        finally
+        {
+            if (gray != null && !ReferenceEquals(gray, textMat))
+            {
+                gray.Dispose();
+            }
+        }
+    }
+
+    internal static double GetMeanAbsoluteDifference(byte[] first, byte[] second)
+    {
+        if (first.Length != second.Length)
+        {
+            return double.MaxValue;
+        }
+
+        long difference = 0;
+        for (var i = 0; i < first.Length; i++)
+        {
+            difference += Math.Abs(first[i] - second[i]);
+        }
+
+        return difference / (double)first.Length;
     }
 
     private bool DoNotPick(string text)

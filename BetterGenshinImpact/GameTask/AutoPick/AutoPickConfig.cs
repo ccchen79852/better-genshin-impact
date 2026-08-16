@@ -42,7 +42,7 @@ namespace BetterGenshinImpact.GameTask.AutoPick
         /// - Yap
         /// </summary>
         [ObservableProperty]
-        private string _ocrEngine = PickOcrEngineEnum.Yap.ToString();
+        private string _ocrEngine = PickOcrEngineEnum.Paddle.ToString();
 
         /// <summary>
         /// 急速模式

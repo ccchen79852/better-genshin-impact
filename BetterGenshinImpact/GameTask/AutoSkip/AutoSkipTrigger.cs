@@ -395,17 +395,18 @@ public partial class AutoSkipTrigger : ITaskTrigger
                 return;
             }
 
-            // OCR识别选项文字
-            foreach (var hangoutOption in hangoutOptionList)
-            {
-                using var ocrMat = UiTextOcrPreprocessor.CreateWhiteTextImage(hangoutOption.TextRect!.SrcMat);
-                var text = OcrFactory.Paddle.OcrWithoutDetector(ocrMat);
-                hangoutOption.OptionTextSrc = StringUtils.RemoveAllEnter(text);
-            }
-
             // 优先选择分支选项
             if (!string.IsNullOrEmpty(_config.AutoHangoutEndChoose))
             {
+                // 只有指定了邀约结局时才需要识别选项文字。
+                // 普通自动点击不使用文字结果，跳过 OCR 可避免每轮多次模型推理。
+                foreach (var hangoutOption in hangoutOptionList)
+                {
+                    using var ocrMat = UiTextOcrPreprocessor.CreateWhiteTextImage(hangoutOption.TextRect!.SrcMat);
+                    var text = OcrFactory.Paddle.OcrWithoutDetector(ocrMat);
+                    hangoutOption.OptionTextSrc = StringUtils.RemoveAllEnter(text);
+                }
+
                 var chooseList = HangoutConfig.Instance.HangoutOptions[_config.AutoHangoutEndChoose];
                 foreach (var hangoutOption in hangoutOptionList)
                 {

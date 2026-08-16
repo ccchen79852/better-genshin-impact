@@ -26,15 +26,22 @@ public class HangoutOption : IDisposable
         Rect r = default;
         var captureArea = TaskContext.Instance().SystemInfo.ScaleMax1080PCaptureRect;
         var assetScale = TaskContext.Instance().SystemInfo.AssetScale;
+        var horizontalMargin = (int)(10 * assetScale);
+        var optionTextWidth = (int)(400 * assetScale);
         if (IconRect.Left > captureArea.Width / 2)
         {
             // 右边的选项
-            r = new Rect(IconRect.Right, IconRect.Top - IconRect.Height * 2 / 3, captureArea.Width - IconRect.Right - (int)(10 * assetScale), IconRect.Height + IconRect.Height * 4 / 3);
+            var availableWidth = captureArea.Width - IconRect.Right - horizontalMargin;
+            r = new Rect(IconRect.Right, IconRect.Top - IconRect.Height * 2 / 3,
+                Math.Min(optionTextWidth, availableWidth), IconRect.Height + IconRect.Height * 4 / 3);
         }
         else if (IconRect.Right < captureArea.Width / 2)
         {
             // 左边的选项
-            r = new Rect((int)(10 * assetScale), IconRect.Top - IconRect.Height * 2 / 3, IconRect.Left - (int)(10 * assetScale), IconRect.Height + IconRect.Height * 4 / 3);
+            var availableWidth = IconRect.Left - horizontalMargin;
+            var width = Math.Min(optionTextWidth, availableWidth);
+            r = new Rect(IconRect.Left - width, IconRect.Top - IconRect.Height * 2 / 3,
+                width, IconRect.Height + IconRect.Height * 4 / 3);
         }
         else
         {

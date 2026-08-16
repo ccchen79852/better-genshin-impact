@@ -138,7 +138,7 @@ public class OneKeyFightTask : Singleton<OneKeyFightTask>
     /// </summary>
     private Task FightTask(CancellationToken ct, bool releasePressedKeysOnStop)
     {
-        var imageRegion = CaptureToRectArea();
+        using var imageRegion = CaptureToRectArea();
         var combatScenes = new CombatScenes().InitializeTeam(imageRegion);
         if (!combatScenes.CheckTeamInitialized())
         {

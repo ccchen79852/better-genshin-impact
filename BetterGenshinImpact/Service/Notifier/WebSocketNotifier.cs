@@ -14,6 +14,7 @@ namespace BetterGenshinImpact.Service.Notifier
         private readonly string _endpoint;
         private readonly JsonSerializerOptions _jsonSerializerOptions;
         private readonly CancellationTokenSource _cts;
+        private readonly SemaphoreSlim _sendLock = new(1, 1);
 
         public WebSocketNotifier(string endpoint, JsonSerializerOptions jsonSerializerOptions, CancellationTokenSource cts)
         {
@@ -47,6 +48,7 @@ namespace BetterGenshinImpact.Service.Notifier
 
         public async Task SendAsync(BaseNotificationData notificationData)
         {
+            await _sendLock.WaitAsync(_cts.Token);
             try
             {
                 await EnsureConnectedAsync();
@@ -59,6 +61,10 @@ namespace BetterGenshinImpact.Service.Notifier
             {
                 Console.WriteLine($"WebSocket send failed: {ex.Message}");
                 await EnsureConnectedAsync();  // Attempt to reconnect
+            }
+            finally
+            {
+                _sendLock.Release();
             }
         }
 
@@ -76,6 +82,7 @@ namespace BetterGenshinImpact.Service.Notifier
         {
             _webSocket.Dispose();
             _cts.Cancel();
+            _sendLock.Dispose();
         }
 
         public async Task SendNotificationAsync(BaseNotificationData notificationData)

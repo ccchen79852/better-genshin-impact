@@ -261,8 +261,10 @@ public class LinneaMiningTask
     private (MineralCluster? cluster, double centerX, double centerY) FindNearestMineralCluster()
     {
         var systemInfo = TaskContext.Instance().SystemInfo;
-        var image = CaptureGameImage(TaskTriggerDispatcher.GlobalGameCapture);
-        var ra = systemInfo.DesktopRectArea.Derive(image, systemInfo.CaptureAreaRect.X, systemInfo.CaptureAreaRect.Y);
+        using var ra = systemInfo.DesktopRectArea.Derive(
+            CaptureGameImage(TaskTriggerDispatcher.GlobalGameCapture),
+            systemInfo.CaptureAreaRect.X,
+            systemInfo.CaptureAreaRect.Y);
 
         // SaveDebugImage(ra.SrcMat);
 

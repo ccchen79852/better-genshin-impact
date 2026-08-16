@@ -1,5 +1,4 @@
 using BetterGenshinImpact.Core.Config;
-using BetterGenshinImpact.Core.Recognition;
 using BetterGenshinImpact.Core.Recognition.OCR;
 using BetterGenshinImpact.Core.Script;
 using BetterGenshinImpact.GameTask;
@@ -329,13 +328,6 @@ public partial class MainWindowViewModel : ObservableObject, IViewModel
         if (Config.CommonConfig.RunForVersion != Global.Version)
         {
             ModifyFolderSecurity();
-
-            // alpha 版本用户每次升级后默认切换到 V6 OCR 模型
-            if (Global.Version.Contains("alpha", StringComparison.OrdinalIgnoreCase)
-                && Config.OtherConfig.OcrConfig.PaddleOcrModelConfig != PaddleOcrModelConfig.V6)
-            {
-                Config.OtherConfig.OcrConfig.PaddleOcrModelConfig = PaddleOcrModelConfig.V6;
-            }
 
             Config.CommonConfig.RunForVersion = Global.Version;
         }

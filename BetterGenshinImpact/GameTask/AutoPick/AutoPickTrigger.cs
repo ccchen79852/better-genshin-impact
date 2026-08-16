@@ -313,7 +313,8 @@ public partial class AutoPickTrigger : ITaskTrigger
                 // 截取只包含文字的区域
                 using var textOnlyMat = new Mat(textMat, new Rect(0, 0,
                     boundingRect.Right + 5 < textMat.Width ? boundingRect.Right + 5 : textMat.Width, textMat.Height));
-                text = OcrFactory.Paddle.OcrWithoutDetector(textOnlyMat);
+                using var ocrMat = UiTextOcrPreprocessor.CreateWhiteTextImage(textOnlyMat);
+                text = OcrFactory.Paddle.OcrWithoutDetector(ocrMat);
 
                 // if (RuntimeHelper.IsDebug)
                 // {
@@ -334,7 +335,8 @@ public partial class AutoPickTrigger : ITaskTrigger
             else
             {
                 Debug.WriteLine("-- 无法识别到有效文字区域，尝试直接OCR DET");
-                text = OcrFactory.Paddle.Ocr(textMat);
+                using var ocrMat = UiTextOcrPreprocessor.CreateWhiteTextImage(textMat);
+                text = OcrFactory.Paddle.Ocr(ocrMat);
             }
         }
 
